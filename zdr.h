@@ -99,6 +99,7 @@ ZD_DEF void zd_dyna_set(struct zd_dyna *da, size_t idx, void *elem);
 ZD_DEF void *zd_dyna_get(struct zd_dyna *da, size_t idx);
 ZD_DEF void zd_dyna_free(struct zd_dyna *da);
 ZD_DEF void *zd_dyna_next(struct zd_dyna *da);
+ZD_DEF void zd_dyna_merge(struct zd_dyna *to, struct zd_dyna *from);
 
 typedef struct zd_dyna  dyna_t;
 
@@ -110,6 +111,7 @@ typedef struct zd_dyna  dyna_t;
 #define dyna_get        zd_dyna_get
 #define dyna_free       zd_dyna_free
 #define dyna_next       zd_dyna_next
+#define dyna_merge      zd_dyna_merge
 
 /* MODULE: ZD_DS_STRING */
 
@@ -273,6 +275,8 @@ ZD_DEF bool zd_fs_remove(const char *pathname);
 ZD_DEF bool zd_fs_remove_all(struct zd_dyna *items);
 ZD_DEF struct zd_dyna zd_fs_match(const char *pathname, const char *pattern);
 ZD_DEF struct zd_dyna zd_fs_find(const char *pathname, int attrs);
+ZD_DEF struct zd_dyna zd_fs_match_recursively(const char *pathname, const char *pattern);
+ZD_DEF struct zd_dyna zd_fs_find_recursively(const char *pathname, int attrs);
 ZD_DEF int zd_fs_typeof(const char *pathname);
 ZD_DEF bool zd_fs_loadf(const char *filename,
         struct zd_meta_file *res, bool is_binary);
@@ -287,26 +291,28 @@ ZD_DEF bool zd_fs_check_perm(const char *filename, int perm);
 typedef struct zd_meta_file metafile_t;
 typedef struct zd_meta_dir  metadir_t;
 
-#define fs_get_timestamp    zd_fs_get_timestamp
-#define fs_get_name         zd_fs_get_name
-#define fs_get_attr         zd_fs_get_attr
-#define fs_check_perm       zd_fs_check_perm
-#define fs_pwd              zd_fs_pwd
-#define fs_cd               zd_fs_cd
-#define fs_move             zd_fs_move
-#define fs_copy             zd_fs_copy
-#define fs_mkdir            zd_fs_mkdir
-#define fs_touch            zd_fs_touch
-#define fs_remove           zd_fs_remove
-#define fs_remove_all       zd_fs_remove_all
-#define fs_match            zd_fs_match
-#define fs_find             zd_fs_find
-#define fs_typeof           zd_fs_typeof
-#define fs_loadf            zd_fs_loadf
-#define fs_loadd            zd_fs_loadd
-#define fs_dumpf            zd_fs_dumpf
-#define fs_free_mf          zd_fs_free_mf
-#define fs_free_md          zd_fs_free_md
+#define fs_get_timestamp        zd_fs_get_timestamp
+#define fs_get_name             zd_fs_get_name
+#define fs_get_attr             zd_fs_get_attr
+#define fs_check_perm           zd_fs_check_perm
+#define fs_pwd                  zd_fs_pwd
+#define fs_cd                   zd_fs_cd
+#define fs_move                 zd_fs_move
+#define fs_copy                 zd_fs_copy
+#define fs_mkdir                zd_fs_mkdir
+#define fs_touch                zd_fs_touch
+#define fs_remove               zd_fs_remove
+#define fs_remove_all           zd_fs_remove_all
+#define fs_match                zd_fs_match
+#define fs_find                 zd_fs_find
+#define fs_match_recursively    zd_fs_match_recursively
+#define fs_find_recursively     zd_fs_find_recursively
+#define fs_typeof               zd_fs_typeof
+#define fs_loadf                zd_fs_loadf
+#define fs_loadd                zd_fs_loadd
+#define fs_dumpf                zd_fs_dumpf
+#define fs_free_mf              zd_fs_free_mf
+#define fs_free_md              zd_fs_free_md
 
 /* MODULE: ZD_COMMAND_LINE */
 
@@ -381,6 +387,9 @@ struct zd_cmd {
 struct zd_builder {
     struct zd_dyna cmds;    /* each element is struct zd_cmd */
     size_t count;
+    string_t target;
+    dyna_t srcs;
+    dyna_t objs;
 };
 
 static void _cmd_append_arg(struct zd_cmd *cmd, ...);
@@ -401,7 +410,8 @@ ZD_DEF void zd_cmd_free(struct zd_cmd *cmd);
 static void _build_append_cmd(struct zd_builder *builder, ...);
 static void _build_update_self(const char *cc, int argc,
         char **argv, const char *source, ...);
-ZD_DEF void zd_build_init(struct zd_builder *builder);
+ZD_DEF void zd_build_init(struct zd_builder *builder, const char *target,
+        const char *dir, bool is_recursive);
 ZD_DEF void zd_build_free(struct zd_builder *builder);
 ZD_DEF void zd_build_print(struct zd_builder *builder);
 ZD_DEF int zd_build_run_sync(struct zd_builder *builder);
@@ -911,13 +921,13 @@ static inline int count_line(char *buf, size_t size)
 ZD_DEF unsigned long long zd_fs_get_timestamp(const char *pathname)
 {
     unsigned long long timestamp = 0;
+    if (zd_fs_typeof(pathname) == FT_NOET) return 0;
 
 #ifdef _WIN32
     HANDLE hFile = CreateFile(pathname, GENERIC_READ, FILE_SHARE_READ,
             NULL, OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "ERROR: unable to open file\n");
-        return timestamp;
+        zd_log(LOG_FATAL, "unable to open file: %s\n", pathname);
     }
 
     FILETIME ftCreate, ftAccess, ftWrite;
@@ -929,14 +939,13 @@ ZD_DEF unsigned long long zd_fs_get_timestamp(const char *pathname)
         ULONGLONG ft = (((ULONGLONG) ftWrite.dwHighDateTime) << 32) + ftWrite.dwLowDateTime;
         timestamp = (unsigned long long)((ft - 116444736000000000LL) / 10000000);
     } else {
-        fprintf(stderr, "ERROR: failed to get file time\n");
+        zd_log(LOG_FATAL, "failed to get file time: %s\n", pathname);
     }
     CloseHandle(hFile);
 #else
     struct stat sb;
     if (stat(pathname, &sb) == -1) {
-        fprintf(stderr, "ERROR: unable to get file stats");
-        return timestamp;
+        zd_log(LOG_FATAL, "unable to get file stats: %s\n", pathname);
     }
 
     timestamp = (unsigned long long) sb.st_mtime;
@@ -1160,6 +1169,47 @@ static bool _remove_dir_recursively(const char *dirpath)
     closedir(dp);
     return rmdir(dirpath) == 0;
 #endif /* platform */
+}
+
+ZD_DEF struct zd_dyna zd_fs_match_recursively(const char *pathname,
+                                              const char *pattern)
+{
+    struct zd_dyna res = {0};
+    if (!pathname || !pattern) return res;
+
+    res = zd_fs_match(pathname, pattern);
+
+    struct zd_meta_dir md = {0};
+    if (!zd_fs_loadd(pathname, &md)) goto defer;
+
+    for (size_t i = 0; i < md.d_cnt; i++) {
+        struct zd_dyna sub_res = zd_fs_match_recursively(md.dirs[i], pattern);
+        zd_dyna_merge(&res, &sub_res);
+    }
+
+defer:
+    zd_fs_free_md(&md);
+    return res;
+}
+
+ZD_DEF struct zd_dyna zd_fs_find_recursively(const char *pathname, int attrs)
+{
+    struct zd_dyna res = {0};
+    if (!pathname || !attrs) return res;
+
+    res = zd_fs_find(pathname, attrs);
+
+    struct zd_meta_dir md = {0};
+    if (!zd_fs_loadd(pathname, &md)) goto defer;
+
+    for (size_t i = 0; i < md.d_cnt; i++) {
+        struct zd_dyna sub_res = zd_fs_find_recursively(md.dirs[i], attrs);
+        zd_dyna_merge(&res, &sub_res);
+    }
+
+defer:
+    zd_fs_free_md(&md);
+    return res;
 }
 
 ZD_DEF struct zd_dyna zd_fs_match(const char *pathname, const char *pattern)
@@ -1509,6 +1559,20 @@ ZD_DEF bool zd_fs_dumpf(const char *dest_file,
 }
 
 /* MODULE: ZD_DS_DYNAMIC_ARRAY */
+
+ZD_DEF void zd_dyna_merge(struct zd_dyna *to, struct zd_dyna *from)
+{
+    if (to->size != from->size) return;
+
+    from->clear_item = NULL;
+
+    for (size_t i = 0; i < from->count; i++) {
+        void *elem = zd_dyna_get(from, i);
+        zd_dyna_append(to, elem);
+    }
+
+    zd_dyna_free(from);
+}
 
 /* A iterator */
 ZD_DEF void *zd_dyna_next(struct zd_dyna *da)
@@ -2030,10 +2094,24 @@ ZD_DEF int zd_cmd_run(struct zd_cmd *cmd)
     return 0;
 }
 
-ZD_DEF void zd_build_init(struct zd_builder *builder)
+ZD_DEF void zd_build_init(struct zd_builder *builder, const char *target,
+        const char *dir, bool is_recursive)
 {
     zd_dyna_init(&builder->cmds, sizeof(struct zd_cmd), NULL);
+    zd_dyna_init(&builder->objs, sizeof(struct zd_string), zd_string_free);
+    zd_string_append(&builder->target, target);
     builder->count = 0;
+
+    builder->srcs = zd_fs_match_recursively(dir, "*.c");
+    for (size_t i = 0; i < builder->srcs.count; i++) {
+        struct zd_string *src = zd_dyna_get(&builder->srcs, i);
+#ifdef _WIN32
+        struct zd_string obj = zd_string_replace(src->base, ".c", ".obj");
+#else
+        struct zd_string obj = zd_string_replace(src->base, ".c", ".o");
+#endif
+        zd_dyna_append(&builder->objs, &obj);
+    }
 }
 
 static void _build_update_self(const char *cc, int argc,
@@ -2126,6 +2204,9 @@ ZD_DEF void zd_build_free(struct zd_builder *builder)
         zd_cmd_free(cmd_iter);
 
     zd_dyna_free(&builder->cmds);
+    zd_dyna_free(&builder->srcs);
+    zd_dyna_free(&builder->objs);
+    zd_string_free(&builder->target);
 
     builder->count = 0;
 }

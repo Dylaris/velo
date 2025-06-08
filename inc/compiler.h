@@ -1,0 +1,3 @@
+#ifndef VELO_COMPILER_H
+#define VELO_COMPILER_H
+#endif // VELO_COMPILER_H
