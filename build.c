@@ -1,82 +1,84 @@
-#define ZD_IMPLEMENTATION
-#include "zd2.h"
+#define ZST_IMPLEMENTATION
+#include "zst.h"
 
 #define CC          "gcc"
 #define TARGET      "velo"
-#define FRONT_END   "src/frontend/"
-#define BACK_END    "src/backend/"
+#define SRC_DIR     "src/"
+#define FRONT_END   (SRC_DIR "frontend/")
+#define BACK_END    (SRC_DIR "backend/")
+
+static zst_forger_t forger = {0};
 
 static void compile(void)
 {
-    builder_t builder = {0};
-    build_init(&builder, TARGET, "src/", true);
-
     /* compile */
-    for (size_t i = 0; i < builder.srcs.count; i++) {
-        string_t *src = (string_t *) dyna_get(&builder.srcs, i);
-        string_t *obj = (string_t *) dyna_get(&builder.objs, i);
-        if (fs_get_timestamp(src->base) <= fs_get_timestamp(obj->base)) continue;
-        cmd_t cmd = {0};
-        cmd_init(&cmd);
-        cmd_append_arg(&cmd, CC, "-I", "inc/", "-Wall", "-Wextra",
+    for (size_t i = 0; i < forger.srcs.count; i++) {
+        zst_string_t *src = (zst_string_t *) zst_dyna_get(&forger.srcs, i);
+        zst_string_t *obj = (zst_string_t *) zst_dyna_get(&forger.objs, i);
+        if (zst_fs_get_timestamp(src->base) <= zst_fs_get_timestamp(obj->base)) continue;
+        zst_cmd_t cmd = {0};
+        zst_cmd_init(&cmd);
+        zst_cmd_append_arg(&cmd, CC, "-g",
+                "-I", "inc/", "-Wall", "-Wextra",
                 "-c", "-o", obj->base, src->base);
-        build_append_cmd(&builder, &cmd);
+        zst_forger_append_cmd(&forger, &cmd);
     }
 
     /* link */
-    cmd_t cmd = {0};
-    cmd_init(&cmd);
-    cmd_append_arg(&cmd, CC, "-I", "inc/", "-Wall", "-Wextra",
-            "-o", builder.target.base);
-    for (size_t i = 0; i < builder.objs.count; i++) {
-        string_t *obj = (string_t *) dyna_get(&builder.objs, i);
-        cmd_append_arg(&cmd, obj->base);
+    zst_cmd_t cmd = {0};
+    zst_cmd_init(&cmd);
+    zst_cmd_append_arg(&cmd, CC, "-g", "-I", "inc/", "-Wall", "-Wextra",
+            "-o", forger.target.base);
+    for (size_t i = 0; i < forger.objs.count; i++) {
+        zst_string_t *obj = (zst_string_t *) zst_dyna_get(&forger.objs, i);
+        zst_cmd_append_arg(&cmd, obj->base);
     }
-    build_append_cmd(&builder, &cmd);
+    zst_forger_append_cmd(&forger, &cmd);
 
-    build_run_sync(&builder);
-
-    build_free(&builder);
+    zst_forger_run_sync(&forger);
 }
 
 static void clean(void)
 {
 #ifdef _WIN32
-    dyna_t files = fs_match_recursively("src/", "*.obj");
+    zst_dyna_t files = zst_fs_match_recursively("src/", "*.obj");
 #else
-    dyna_t files = fs_match_recursively("src/", "*.o");
+    zst_dyna_t files = zst_fs_match_recursively("src/", "*.o");
 #endif
-    fs_remove_all(&files);
-    fs_remove(TARGET);
-    dyna_free(&files);
+    zst_fs_remove_all(&files);
+    zst_fs_remove(TARGET);
+    zst_dyna_free(&files);
 }
 
-static void define_rule(cmdl_t *cmdl)
+static void define_flags(zst_cmdline_t *cmdl)
 {
-    cmdl_define(cmdl, OPTT_NO_ARG, "help", "h", "Print this information");
-    cmdl_define(cmdl, OPTT_NO_ARG, "compile", "c", "Compile all source files");
-    cmdl_define(cmdl, OPTT_NO_ARG, "clean", "cl", "Clean all generated files");
+    zst_cmdline_define_flag(cmdl, FLAG_NO_ARG, "h", "Print this information");
+    zst_cmdline_define_flag(cmdl, FLAG_NO_ARG, "c", "Compile all source files");
+    zst_cmdline_define_flag(cmdl, FLAG_NO_ARG, "cl", "Clean all generated files");
 }
 
 int main(int argc, char **argv)
 {
-    build_update_self(CC, argc, argv);
+    zst_forger_update_self(CC, argc, argv);
 
-    cmdl_t cmdl = {0};
-    cmdl_init(&cmdl, true);
-    define_rule(&cmdl);
+    zst_cmdline_t cmdl = {0};
+    zst_cmdline_init(&cmdl);
+    define_flags(&cmdl);
 
-    cmdl_build(&cmdl, argc, argv);
+    zst_cmdline_parse(&cmdl, argc, argv);
 
-    bool is_help = cmdl_isuse(&cmdl, "help");
-    bool is_compile = cmdl_isuse(&cmdl, "compile");
-    bool is_clean = cmdl_isuse(&cmdl, "clean");
+    zst_forger_init(&forger, TARGET, "src/", true);
 
-    if (is_help) cmdl_usage(&cmdl);
+    bool is_help    = zst_cmdline_isuse(&cmdl, "h");
+    bool is_compile = zst_cmdline_isuse(&cmdl, "c");
+    bool is_clean   = zst_cmdline_isuse(&cmdl, "cl");
+
+    if (is_help) zst_cmdline_usage(&cmdl);
     if (is_compile) compile();
     if (is_clean) clean();
 
-    cmdl_free(&cmdl);
+    zst_forger_free(&forger);
+    zst_cmdline_free(&cmdl);
 
     return 0;
 }
