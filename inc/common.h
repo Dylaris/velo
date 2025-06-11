@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define DEBUG_TRACE_STACK
+
 #define PRIVATE static
 #define PUBLIC
 

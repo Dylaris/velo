@@ -15,6 +15,7 @@ PUBLIC void init_chunk(chunk_t *chunk)
 PUBLIC void free_chunk(chunk_t *chunk)
 {
     if (chunk->codes) free(chunk->codes);
+    if (chunk->lines) free(chunk->lines);
     free_value_pool(&chunk->constants);
     init_chunk(chunk);
 }
@@ -32,17 +33,6 @@ PUBLIC void write_code_to_chunk(chunk_t *chunk, uint8_t byte, size_t line)
     chunk->codes[chunk->count] = byte;
     chunk->lines[chunk->count] = line;
     chunk->count++;
-}
-
-PUBLIC void dump_chunk(chunk_t *chunk)
-{
-    for (size_t i = 0; i < chunk->count; i += 8) {
-        printf("%04ld >", i);
-        for (size_t j = i; j < i+8 && j < chunk->count; j++) {
-            printf(" %02X", chunk->codes[j]);
-        }
-        printf("\n");
-    }
 }
 
 PUBLIC uint8_t add_constant_to_chunk(chunk_t *chunk, value_t value)

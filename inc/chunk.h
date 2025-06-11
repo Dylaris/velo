@@ -6,13 +6,24 @@
 
 /* 
  * opcode format
+ * (n) means n bytes
  * OP_RETURN: [ OP_RETURN (1) | exit_code (1)       ]
  * OP_LOAD:   [ OP_LOAD (1)   | constant_idx (1)    ]
+ * OP_NEG:    [ OP_NEG (1)                          ]
+ * OP_ADD:    [ OP_ADD (1)                          ]
+ * OP_SUB:    [ OP_SUB (1)                          ]
+ * OP_MUL:    [ OP_MUL (1)                          ]
+ * OP_DIV:    [ OP_DIV (1)                          ]
  */
 
 typedef enum {
     OP_LOAD,
     OP_RETURN,
+    OP_NEG,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
 } opcode_t;
 
 typedef union {
@@ -36,7 +47,6 @@ typedef struct {
 PUBLIC void init_chunk(chunk_t *chunk);
 PUBLIC void free_chunk(chunk_t *chunk);
 PUBLIC void write_code_to_chunk(chunk_t *chunk, uint8_t byte, size_t line);
-PUBLIC void dump_chunk(chunk_t *chunk);
 PUBLIC uint8_t add_constant_to_chunk(chunk_t *chunk, value_t value);
 
 #endif // VELO_CHUNK_H
