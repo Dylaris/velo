@@ -22,6 +22,6 @@ typedef enum {
 
 PUBLIC void init_vm(vm_t *vm);
 PUBLIC void free_vm(vm_t *vm);
-PUBLIC status_t run(vm_t *vm);
+PUBLIC status_t interpret(vm_t *vm, const char *source);
 
 #endif // VELO_VM_H

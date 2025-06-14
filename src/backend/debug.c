@@ -4,6 +4,10 @@
 #define CHECK(chk, off, cnt)    ((chk)->count >= (off) + (cnt))
 #define FMT_PREFIX              "[%04ld] <line:%02ld> %-10s"
 
+/* ====================================================== *
+ *             private function declaration               *
+ * ====================================================== */
+
 PRIVATE size_t op_load(chunk_t *chunk, size_t offset);
 PRIVATE size_t op_return(chunk_t *chunk, size_t offset);
 PRIVATE size_t op_neg(chunk_t *chunk, size_t offset);
@@ -11,6 +15,11 @@ PRIVATE size_t op_add(chunk_t *chunk, size_t offset);
 PRIVATE size_t op_sub(chunk_t *chunk, size_t offset);
 PRIVATE size_t op_mul(chunk_t *chunk, size_t offset);
 PRIVATE size_t op_div(chunk_t *chunk, size_t offset);
+
+
+/* ====================================================== *
+ *           private function implementation              *
+ * ====================================================== */
 
 PRIVATE size_t op_load(chunk_t *chunk, size_t offset)
 {
@@ -69,6 +78,10 @@ PRIVATE size_t op_div(chunk_t *chunk, size_t offset)
             chunk->lines[offset-1], "OP_DIV");
     return offset;
 }
+
+/* ====================================================== *
+ *           public function implementation               *
+ * ====================================================== */
 
 PUBLIC void disasm_vm(vm_t *vm, const char *name)
 {

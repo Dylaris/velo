@@ -3,6 +3,10 @@
 
 #include "chunk.h"
 
+/* ====================================================== *
+ *           public function implementation               *
+ * ====================================================== */
+
 PUBLIC void init_chunk(chunk_t *chunk)
 {
     chunk->count    = 0;

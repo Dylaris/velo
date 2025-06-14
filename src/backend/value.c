@@ -1,5 +1,9 @@
 #include "value.h"
 
+/* ====================================================== *
+ *          public function implementation                *
+ * ====================================================== */
+
 PUBLIC void init_value_pool(value_pool_t *pool)
 {
     pool->count    = 0;

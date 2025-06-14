@@ -1,37 +1,47 @@
 #include <stdio.h>
+#include <assert.h>
 
+#include "common.h"
 #include "vm.h"
 #include "debug.h"
 #include "chunk.h"
 
-int main(void)
+static char *read_file(const char *filename)
 {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        fprintf(stderr, "ERROR: can't open the file %s\n", filename);
+        return NULL;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    rewind(fp);
+
+    char *source = NULL;
+    if (size > 0) {
+        source = malloc(size + 1);
+        assert(source != NULL);
+        assert(fread(source, 1, size, fp) == (size_t) size);
+        source[size] = '\0';
+    }
+
+    fclose(fp);
+    return source;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <FILE>\n", argv[0]);
+        return 1;
+    }
+
     vm_t vm;
     init_vm(&vm);
 
-    uint8_t index;
-
-    write_code_to_chunk(&vm.chunk, OP_LOAD, 123);
-    index = add_constant_to_chunk(&vm.chunk, 12.3);
-    write_code_to_chunk(&vm.chunk, index, 123);
-
-    write_code_to_chunk(&vm.chunk, OP_LOAD, 123);
-    index = add_constant_to_chunk(&vm.chunk, 3);
-    write_code_to_chunk(&vm.chunk, index, 123);
-    
-    write_code_to_chunk(&vm.chunk, OP_ADD, 123);
-
-    write_code_to_chunk(&vm.chunk, OP_NEG, 123);
-
-    write_code_to_chunk(&vm.chunk, OP_LOAD, 123);
-    index = add_constant_to_chunk(&vm.chunk, 100);
-    write_code_to_chunk(&vm.chunk, index, 123);
-    write_code_to_chunk(&vm.chunk, OP_MUL, 123);
-
-    write_code_to_chunk(&vm.chunk, OP_RETURN, 123);
-    write_code_to_chunk(&vm.chunk, 0, 123);
-
-    run(&vm);
+    char *source = read_file(argv[1]);
+    interpret(&vm, source);
 
     disasm_vm(&vm, "test");
 

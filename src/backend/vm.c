@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "compiler.h"
 #ifdef DEBUG_TRACE_STACK
 #include "debug.h"
 #endif
@@ -20,8 +21,65 @@
         PUSH(vm, a op b);       \
     } while (0)
 
+/* ====================================================== *
+ *           private function declaration                 *
+ * ====================================================== */
+
 PRIVATE inst_t read_instruction(vm_t *vm);
 PRIVATE char *opcode_to_string(opcode_t opcode);
+PRIVATE int run(vm_t *vm);
+
+/* ====================================================== *
+ *           private function implementation              *
+ * ====================================================== */
+
+PRIVATE int run(vm_t *vm)
+{
+    vm->pc = vm->chunk.codes;
+
+#ifdef DEBUG_TRACE_STACK
+        printf(">> DEBUG TRACE STACK <<\n");
+#endif
+
+    while (vm->pc < vm->chunk.codes + vm->chunk.count) {
+        inst_t inst = read_instruction(vm);
+
+#ifdef DEBUG_TRACE_STACK
+        size_t offset = vm->pc - vm->chunk.codes;
+#endif
+
+        switch (inst.opcode) {
+        case OP_LOAD: {
+            value_t value = READ_CONSTANT(vm, inst.operand.index);
+            PUSH(vm, value);
+        } break;
+
+        case OP_RETURN: goto normal_exit;
+
+        case OP_NEG: UNARY_OP(vm, -);  break;
+        case OP_ADD: BINARY_OP(vm, +); break;
+        case OP_SUB: BINARY_OP(vm, -); break; 
+        case OP_MUL: BINARY_OP(vm, *); break; 
+        case OP_DIV: BINARY_OP(vm, /); break; 
+
+        default: return 1;
+        }
+
+#ifdef DEBUG_TRACE_STACK
+        printf("[%04ld] <line:%02ld> =opcode=: %s\n", offset,
+            vm->chunk.lines[offset], opcode_to_string(inst.opcode));
+        dump_stack(vm->ss, vm->sp - vm->ss);
+#endif
+    }
+
+normal_exit:
+
+#ifdef DEBUG_TRACE_STACK
+    printf("\n\n");
+#endif
+
+    return 1;
+}
 
 PRIVATE inst_t read_instruction(vm_t *vm)
 {
@@ -63,8 +121,11 @@ PRIVATE char *opcode_to_string(opcode_t opcode)
     case OP_DIV:    return "OP_DIV";
     default:        unreachable("unknown opcode");
     }
-    return "(null)";
 }
+
+/* ====================================================== *
+ *           public function implementation               *
+ * ====================================================== */
 
 PUBLIC void init_vm(vm_t *vm)
 {
@@ -78,51 +139,11 @@ PUBLIC void free_vm(vm_t *vm)
     init_vm(vm);
 }
 
-PUBLIC status_t run(vm_t *vm)
+PUBLIC status_t interpret(vm_t *vm, const char *source)
 {
-    vm->pc = vm->chunk.codes;
-
-#ifdef DEBUG_TRACE_STACK
-        printf(">> DEBUG TRACE STACK <<\n");
-#endif
-
-    while (vm->pc < vm->chunk.codes + vm->chunk.count) {
-        inst_t inst = read_instruction(vm);
-
-#ifdef DEBUG_TRACE_STACK
-        size_t offset = vm->pc - vm->chunk.codes;
-#endif
-
-        switch (inst.opcode) {
-        case OP_LOAD: {
-            value_t value = READ_CONSTANT(vm, inst.operand.index);
-            PUSH(vm, value);
-        } break;
-
-        case OP_RETURN: goto normal_exit;
-
-        case OP_NEG: UNARY_OP(vm, -);  break;
-        case OP_ADD: BINARY_OP(vm, +); break;
-        case OP_SUB: BINARY_OP(vm, -); break; 
-        case OP_MUL: BINARY_OP(vm, *); break; 
-        case OP_DIV: BINARY_OP(vm, /); break; 
-
-        default: return INTERPRET_RUNTIME_ERROR;
-        }
-
-#ifdef DEBUG_TRACE_STACK
-        printf("[%04ld] <line:%02ld> =opcode=: %s\n", offset,
-            vm->chunk.lines[offset], opcode_to_string(inst.opcode));
-        dump_stack(vm->ss, vm->sp - vm->ss);
-#endif
-    }
-
-normal_exit:
-
-#ifdef DEBUG_TRACE_STACK
-    printf("\n\n");
-#endif
-
+    if (!source) return INTERPRET_OK;
+    if (compile(vm, source) != 0) return INTERPRET_COMPILE_ERROR;
+    if (run(vm) != 0) return INTERPRET_RUNTIME_ERROR;
     return INTERPRET_OK;
 }
 
