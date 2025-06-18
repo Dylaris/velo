@@ -54,7 +54,7 @@ PRIVATE int run(vm_t *vm)
             PUSH(vm, value);
         } break;
 
-        case OP_RETURN: goto normal_exit;
+        case OP_RETURN: break;
 
         case OP_NEG: UNARY_OP(vm, -);  break;
         case OP_ADD: BINARY_OP(vm, +); break;
@@ -72,13 +72,11 @@ PRIVATE int run(vm_t *vm)
 #endif
     }
 
-normal_exit:
-
 #ifdef DEBUG_TRACE_STACK
-    printf("\n\n");
+    printf("\n");
 #endif
 
-    return 1;
+    return 0;
 }
 
 PRIVATE inst_t read_instruction(vm_t *vm)
@@ -92,9 +90,6 @@ PRIVATE inst_t read_instruction(vm_t *vm)
         break;
 
     case OP_RETURN:
-        res.operand.status = READ_BYTE(vm);
-        break;
-
     case OP_NEG:
     case OP_ADD:
     case OP_SUB:

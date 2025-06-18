@@ -129,7 +129,7 @@ PRIVATE void parse_precedence(vm_t *vm, parser_t *parser, prec_t prec)
 
 PRIVATE void expr(vm_t *vm, parser_t *parser)
 {
-    parse_precedence(vm, parser, PREC_NONE);
+    parse_precedence(vm, parser, PREC_ASSIGN);
 }
 
 PRIVATE void expr_number(vm_t *vm, parser_t *parser)
@@ -209,14 +209,22 @@ PRIVATE void emit_load(vm_t *vm, value_t value, size_t line)
 
 PUBLIC int compile(vm_t *vm, const char *source)
 {
+#if 0
     parser_t parser;
     init_parser(&parser, source);
 
     int status = 0;
+
     expr(vm, &parser);
     consume(&parser, TOKEN_EOF, "expected end of expression");
+#else
+    (void) vm;
 
-#if 0
+    lexer_t lexer;
+    init_lexer(&lexer, source);
+
+    int status = 0;
+
     while (1) {
         token_t token = scan_token(&lexer);
         printf("<line:%04ld> %-30s %.*s\n", token.line,
@@ -224,6 +232,8 @@ PUBLIC int compile(vm_t *vm, const char *source)
         if (token.type == TOKEN_ERROR) status = 1;
         if (token.type == TOKEN_EOF) break;
     }
+
+    printf("\n\n");
 #endif
 
     return status;

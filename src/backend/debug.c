@@ -36,11 +36,8 @@ PRIVATE size_t op_load(chunk_t *chunk, size_t offset)
 
 PRIVATE size_t op_return(chunk_t *chunk, size_t offset)
 {
-    if (!CHECK(chunk, offset, 1)) fatal("OP_RETURN without exit code");
-    uint8_t exit_code = READ_BYTE(chunk, offset); 
-    printf(FMT_PREFIX" %02X\n", offset-2,
-            chunk->lines[offset-1], "OP_RETURN", exit_code);
-
+    printf(FMT_PREFIX"\n", offset-1,
+            chunk->lines[offset-1], "OP_RETURN");
     return offset;
 }
 
@@ -136,6 +133,6 @@ PUBLIC void dump_chunk(chunk_t *chunk)
     }
 }
 
-
 #undef READ_BYTE
 #undef CHECK
+#undef FMT_PREFIX

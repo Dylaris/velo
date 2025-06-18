@@ -7,7 +7,7 @@
 /* 
  * opcode format
  * (n) means n bytes
- * OP_RETURN: [ OP_RETURN (1) | exit_code (1)       ]
+ * OP_RETURN: [ OP_RETURN (1)                       ]
  * OP_LOAD:   [ OP_LOAD (1)   | constant_idx (1)    ]
  * OP_NEG:    [ OP_NEG (1)                          ]
  * OP_ADD:    [ OP_ADD (1)                          ]
@@ -27,7 +27,6 @@ typedef enum {
 } opcode_t;
 
 typedef union {
-    uint8_t status;
     uint8_t index;
 } operand_t;
 
