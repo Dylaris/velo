@@ -14,7 +14,7 @@
  *             private function declaration               *
  * ====================================================== */
 
-PRIVATE token_t make_token(lexer_t *lexer, token_type_t type);
+PRIVATE token_t make_token(lexer_t *lexer, toktype_t type);
 PRIVATE token_t error_token(lexer_t *lexer, const char *msg);
 PRIVATE void skip_whitespace(lexer_t *lexer);
 PRIVATE void skip_comment(lexer_t *lexer);
@@ -26,13 +26,13 @@ PRIVATE char advance(lexer_t *lexer);
 PRIVATE char peek(lexer_t *lexer);
 PRIVATE char peek_next(lexer_t *lexer);
 PRIVATE bool match(lexer_t *lexer, char expected);
-PRIVATE token_type_t get_identifier_type(lexer_t *lexer);
+PRIVATE toktype_t get_identifier_type(lexer_t *lexer);
 
 /* ====================================================== *
  *             private function implementation            *
  * ====================================================== */
 
-PRIVATE token_type_t get_identifier_type(lexer_t *lexer)
+PRIVATE toktype_t get_identifier_type(lexer_t *lexer)
 {
     switch (lexer->start[0]) {
     case 'v': return TOKEN_VAR;
@@ -149,7 +149,7 @@ PRIVATE token_t error_token(lexer_t *lexer, const char *msg)
     };
 }
 
-PRIVATE token_t make_token(lexer_t *lexer, token_type_t type)
+PRIVATE token_t make_token(lexer_t *lexer, toktype_t type)
 {
     return (token_t) {
         .type   = type,

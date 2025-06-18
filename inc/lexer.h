@@ -22,10 +22,10 @@ typedef enum {
     TOKEN_VAR, TOKEN_RETURN, TOKEN_PRINT,
 
     TOKEN_ERROR, TOKEN_EOF,
-} token_type_t;
+} toktype_t;
 
 typedef struct {
-    token_type_t type;
+    toktype_t type;
     const char *start;
     size_t length;
     size_t line;
