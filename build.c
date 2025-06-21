@@ -11,7 +11,7 @@ static zst_forger_t forger = {0};
 
 static void compile(void)
 {
-    /* compile */
+    /* Compile */
     for (size_t i = 0; i < forger.srcs.count; i++) {
         zst_string_t *src = (zst_string_t *) zst_dyna_get(&forger.srcs, i);
         zst_string_t *obj = (zst_string_t *) zst_dyna_get(&forger.objs, i);
@@ -24,7 +24,7 @@ static void compile(void)
         zst_forger_append_cmd(&forger, &cmd);
     }
 
-    /* link */
+    /* Link */
     zst_cmd_t cmd = {0};
     zst_cmd_init(&cmd);
     zst_cmd_append_arg(&cmd, CC, "-g", "-I", "inc/", "-Wall", "-Wextra",

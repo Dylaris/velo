@@ -35,9 +35,12 @@ PRIVATE toktype_t get_identifier_type(lexer_t *lexer);
 PRIVATE toktype_t get_identifier_type(lexer_t *lexer)
 {
     switch (lexer->start[0]) {
-    case 'v': return TOKEN_VAR;
-    case 'r': return TOKEN_RETURN;
+    case 'f': return TOKEN_FALSE;
+    case 'n': return TOKEN_NIL;
     case 'p': return TOKEN_PRINT;
+    case 't': return TOKEN_TRUE;
+    case 'r': return TOKEN_RETURN;
+    case 'v': return TOKEN_VAR;
     default:  return TOKEN_IDENTIFIER;
     }
 }
@@ -243,6 +246,9 @@ PUBLIC char *token_to_string(token_t token)
     case TOKEN_VAR:             return "TOKEN_VAR";
     case TOKEN_RETURN:          return "TOKEN_RETURN";
     case TOKEN_PRINT:           return "TOKEN_PRINT";
+    case TOKEN_NIL:             return "TOKEN_NIL";
+    case TOKEN_TRUE:            return "TOKEN_TRUE";
+    case TOKEN_FALSE:           return "TOKEN_FALSE";
     default:                    return "unknown token";
     }
 }

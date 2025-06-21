@@ -521,7 +521,6 @@ ZST_DEF void zst_cmdline_parse(zst_cmdline_t *cmdl, int argc, char **argv)
             continue;
         }
 
-        bool isused = flag->isused;
         flag->isused = true;
 
         /* add target values for this flag according to its type */
@@ -1478,7 +1477,7 @@ ZST_DEF zst_string_t zst_string_sub(const char *str, size_t src, size_t dest)
     return res;
 }
 
-static zst_string_t _string_concat(const char *delim, ...)
+static zst_string_t zst_string_concat_(const char *delim, ...)
 {
     va_list args;
     va_start(args, delim);
@@ -1812,7 +1811,11 @@ ZST_DEF void zst_forger_init(zst_forger_t *forger, const char *target, const cha
     zst_string_append(&forger->target, target);
     forger->count = 0;
 
-    forger->srcs = zst_fs_match_recursively(dir, "*.c");
+    if (is_recursive) {
+        forger->srcs = zst_fs_match_recursively(dir, "*.c");
+    } else {
+        forger->srcs = zst_fs_match(dir, "*.c");
+    }
     for (size_t i = 0; i < forger->srcs.count; i++) {
         zst_string_t *src = zst_dyna_get(&forger->srcs, i);
 #ifdef _WIN32

@@ -19,6 +19,10 @@
         exit(1);                                        \
     } while (0)
 
-#define unreachable(msg) fatal(msg)
+#define errinfo(fmt, ...)                               \
+        fprintf(stderr, "ERROR: "fmt" at <%s:%d>\n",    \
+            ##__VA_ARGS__, __FILE__, __LINE__)
+
+#define unreachable(msg, ...) fatal(msg, ##__VA_ARGS__)
 
 #endif // VELO_COMMON_H

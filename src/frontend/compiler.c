@@ -40,6 +40,7 @@ PRIVATE rule_t *get_rule(toktype_t type);
 PRIVATE void parse_precedence(vm_t *vm, parser_t *parser, prec_t prec);
 PRIVATE void expr(vm_t *vm, parser_t *parser);
 PRIVATE void expr_number(vm_t *vm, parser_t *parser);
+PRIVATE void expr_literal(vm_t *vm, parser_t *parser);
 PRIVATE void expr_unary(vm_t *vm, parser_t *parser);
 PRIVATE void expr_binary(vm_t *vm, parser_t *parser);
 PRIVATE void expr_grouping(vm_t *vm, parser_t *parser);
@@ -54,14 +55,14 @@ PRIVATE rule_t rules[] = {
     [TOKEN_MINUS]           = {expr_unary, expr_binary, PREC_TERM},
     [TOKEN_STAR]            = {NULL, expr_binary, PREC_FACTOR},
     [TOKEN_SLASH]           = {NULL, expr_binary, PREC_FACTOR},
-    [TOKEN_BANG]            = {NULL, NULL, PREC_NONE},
-    [TOKEN_BANG_EQUAL]      = {NULL, NULL, PREC_NONE},
+    [TOKEN_BANG]            = {expr_unary, NULL, PREC_NONE},
+    [TOKEN_BANG_EQUAL]      = {NULL, expr_binary, PREC_EQUAL},
     [TOKEN_EQUAL]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_EQUAL_EQUAL]     = {NULL, NULL, PREC_NONE},
-    [TOKEN_GREATER]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_GREATER_EQUAL]   = {NULL, NULL, PREC_NONE},
-    [TOKEN_LESS]            = {NULL, NULL, PREC_NONE},
-    [TOKEN_LESS_EQUAL]      = {NULL, NULL, PREC_NONE},
+    [TOKEN_EQUAL_EQUAL]     = {NULL, expr_binary, PREC_EQUAL},
+    [TOKEN_GREATER]         = {NULL, expr_binary, PREC_CMP},
+    [TOKEN_GREATER_EQUAL]   = {NULL, expr_binary, PREC_CMP},
+    [TOKEN_LESS]            = {NULL, expr_binary, PREC_CMP},
+    [TOKEN_LESS_EQUAL]      = {NULL, expr_binary, PREC_CMP},
     [TOKEN_LPAREN]          = {expr_grouping, NULL, PREC_NONE},
     [TOKEN_RPAREN]          = {NULL, NULL, PREC_NONE},
     [TOKEN_LBRACE]          = {NULL, NULL, PREC_NONE},
@@ -75,6 +76,9 @@ PRIVATE rule_t rules[] = {
     [TOKEN_VAR]             = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN]          = {NULL, NULL, PREC_NONE},
     [TOKEN_PRINT]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRUE]            = {expr_literal, NULL, PREC_NONE},
+    [TOKEN_FALSE]           = {expr_literal, NULL, PREC_NONE},
+    [TOKEN_NIL]             = {expr_literal, NULL, PREC_NONE},
     [TOKEN_ERROR]           = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF]             = {NULL, NULL, PREC_NONE},
 };
@@ -132,9 +136,20 @@ PRIVATE void expr(vm_t *vm, parser_t *parser)
     parse_precedence(vm, parser, PREC_ASSIGN);
 }
 
+PRIVATE void expr_literal(vm_t *vm, parser_t *parser)
+{
+    token_t tk = parser->previous;
+    switch (tk.type) {
+    case TOKEN_TRUE:  emit_byte(vm, OP_TRUE,  tk.line); break;
+    case TOKEN_FALSE: emit_byte(vm, OP_FALSE, tk.line); break;
+    case TOKEN_NIL:   emit_byte(vm, OP_NIL,   tk.line); break;
+    default:          unreachable("unknown type");
+    }
+}
+
 PRIVATE void expr_number(vm_t *vm, parser_t *parser)
 {
-    double value = strtod(parser->previous.start, NULL);
+    value_t value = PACK_NUMBER(strtod(parser->previous.start, NULL));
     emit_load(vm, value, parser->previous.line);
 }
 
@@ -146,6 +161,9 @@ PRIVATE void expr_unary(vm_t *vm, parser_t *parser)
     switch (optype) {
     case TOKEN_MINUS:
         emit_byte(vm, OP_NEG, parser->previous.line);
+        break;
+    case TOKEN_BANG:
+        emit_byte(vm, OP_NOT, parser->previous.line);
         break;
     default:
         unreachable("expr_unary()");
@@ -169,6 +187,24 @@ PRIVATE void expr_binary(vm_t *vm, parser_t *parser)
         break;
     case TOKEN_SLASH:
         emit_byte(vm, OP_DIV, parser->previous.line);
+        break;
+    case TOKEN_BANG_EQUAL:
+        emit_bytes(vm, OP_EQUAL, OP_NOT, parser->previous.line);
+        break;
+    case TOKEN_EQUAL_EQUAL:
+        emit_byte(vm, OP_EQUAL, parser->previous.line);
+        break;
+    case TOKEN_GREATER:
+        emit_byte(vm, OP_GREATER, parser->previous.line);
+        break;
+    case TOKEN_GREATER_EQUAL:
+        emit_bytes(vm, OP_LESS, OP_NOT, parser->previous.line);
+        break;
+    case TOKEN_LESS:
+        emit_byte(vm, OP_LESS, parser->previous.line);
+        break;
+    case TOKEN_LESS_EQUAL:
+        emit_bytes(vm, OP_GREATER, OP_NOT, parser->previous.line);
         break;
     default:
         unreachable("expr_binary()");
@@ -209,7 +245,7 @@ PRIVATE void emit_load(vm_t *vm, value_t value, size_t line)
 
 PUBLIC int compile(vm_t *vm, const char *source)
 {
-#if 0
+#if 1
     parser_t parser;
     init_parser(&parser, source);
 

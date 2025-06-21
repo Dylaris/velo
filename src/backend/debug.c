@@ -4,18 +4,26 @@
 #define CHECK(chk, off, cnt)    ((chk)->count >= (off) + (cnt))
 #define FMT_PREFIX              "[%04ld] <line:%02ld> %-10s"
 
+#define op_return(chk, off)     op_func1("OP_RETURN", chk, off)
+#define op_neg(chk, off)        op_func1("OP_NEG", chk, off)
+#define op_add(chk, off)        op_func1("OP_ADD", chk, off)
+#define op_sub(chk, off)        op_func1("OP_SUB", chk, off)
+#define op_mul(chk, off)        op_func1("OP_MUL", chk, off)
+#define op_div(chk, off)        op_func1("OP_DIV", chk, off)
+#define op_not(chk, off)        op_func1("OP_NOT", chk, off)
+#define op_equal(chk, off)      op_func1("OP_EQUAL", chk, off)
+#define op_greater(chk, off)    op_func1("OP_GREATER", chk, off)
+#define op_less(chk, off)       op_func1("OP_LESS", chk, off)
+#define op_true(chk, off)       op_func1("OP_TRUE", chk, off)
+#define op_false(chk, off)      op_func1("OP_FALSE", chk, off)
+#define op_nil(chk, off)        op_func1("OP_NIL", chk, off)
+
 /* ====================================================== *
  *             private function declaration               *
  * ====================================================== */
 
+PRIVATE size_t op_func1(const char *name, chunk_t *chunk, size_t offset);
 PRIVATE size_t op_load(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_return(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_neg(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_add(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_sub(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_mul(chunk_t *chunk, size_t offset);
-PRIVATE size_t op_div(chunk_t *chunk, size_t offset);
-
 
 /* ====================================================== *
  *           private function implementation              *
@@ -34,45 +42,9 @@ PRIVATE size_t op_load(chunk_t *chunk, size_t offset)
     return offset;
 }
 
-PRIVATE size_t op_return(chunk_t *chunk, size_t offset)
+PRIVATE size_t op_func1(const char *name, chunk_t *chunk, size_t offset)
 {
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_RETURN");
-    return offset;
-}
-
-PRIVATE size_t op_neg(chunk_t *chunk, size_t offset)
-{
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_NEG");
-    return offset;
-}
-
-PRIVATE size_t op_add(chunk_t *chunk, size_t offset)
-{
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_ADD");
-    return offset;
-}
-
-PRIVATE size_t op_sub(chunk_t *chunk, size_t offset)
-{
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_SUB");
-    return offset;
-}
-
-PRIVATE size_t op_mul(chunk_t *chunk, size_t offset)
-{
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_MUL");
-    return offset;
-}
-
-PRIVATE size_t op_div(chunk_t *chunk, size_t offset)
-{
-    printf(FMT_PREFIX"\n", offset-1,
-            chunk->lines[offset-1], "OP_DIV");
+    printf(FMT_PREFIX"\n", offset-1, chunk->lines[offset-1], name);
     return offset;
 }
 
@@ -98,14 +70,21 @@ PUBLIC size_t disasm_instruction(chunk_t *chunk, size_t offset)
 {
     opcode_t opcode = READ_BYTE(chunk, offset);
     switch (opcode) {
-    case OP_LOAD:   offset = op_load(chunk, offset);   break;
-    case OP_RETURN: offset = op_return(chunk, offset); break;
-    case OP_NEG:    offset = op_neg(chunk, offset);    break;
-    case OP_ADD:    offset = op_add(chunk, offset);    break;
-    case OP_SUB:    offset = op_sub(chunk, offset);    break;
-    case OP_MUL:    offset = op_mul(chunk, offset);    break;
-    case OP_DIV:    offset = op_div(chunk, offset);    break;
-    default:        unreachable("unknown opcode");
+    case OP_LOAD:    offset = op_load(chunk, offset);    break;
+    case OP_RETURN:  offset = op_return(chunk, offset);  break;
+    case OP_NEG:     offset = op_neg(chunk, offset);     break;
+    case OP_ADD:     offset = op_add(chunk, offset);     break;
+    case OP_SUB:     offset = op_sub(chunk, offset);     break;
+    case OP_MUL:     offset = op_mul(chunk, offset);     break;
+    case OP_DIV:     offset = op_div(chunk, offset);     break;
+    case OP_NOT:     offset = op_not(chunk, offset);     break;
+    case OP_EQUAL:   offset = op_equal(chunk, offset);   break;
+    case OP_GREATER: offset = op_greater(chunk, offset); break;
+    case OP_LESS:    offset = op_less(chunk, offset);    break;
+    case OP_TRUE:    offset = op_true(chunk, offset);    break;
+    case OP_FALSE:   offset = op_false(chunk, offset);   break;
+    case OP_NIL:     offset = op_nil(chunk, offset);     break;
+    default:         unreachable("unknown opcode");
     }
 
     return offset;
@@ -136,3 +115,18 @@ PUBLIC void dump_chunk(chunk_t *chunk)
 #undef READ_BYTE
 #undef CHECK
 #undef FMT_PREFIX
+
+#undef op_return
+#undef op_neg
+#undef op_add
+#undef op_sub
+#undef op_mul
+#undef op_div
+#undef op_not
+#undef op_equal
+#undef op_greater
+#undef op_less
+#undef op_true
+#undef op_false
+#undef op_nil
+
