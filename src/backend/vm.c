@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 #include "vm.h"
 #include "compiler.h"
 #ifdef DEBUG_TRACE_STACK
@@ -10,7 +12,7 @@
 #define BINARY_OP(pack, vm, op)                                     \
     do {                                                            \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {   \
-            errinfo("operand type must be 'number'");               \
+            error(vm, "operands must be numbers");                  \
             return 1;                                               \
         }                                                           \
         double b = UNPACK_NUMBER(pop(vm));                          \
@@ -24,7 +26,8 @@
 
 PRIVATE inst_t read_instruction(vm_t *vm);
 PRIVATE char *opcode_to_string(opcode_t opcode);
-PRIVATE int run(vm_t *vm);
+PRIVATE bool run(vm_t *vm);
+PRIVATE void error(vm_t *vm, const char *fmt, ...);
 /* The push/pop/peek operations are frequently used, 
    and using them as macros can result in multiple 
    evaluations during macro expansion. */
@@ -57,7 +60,22 @@ PRIVATE void push(vm_t *vm, value_t value)
     *vm->sp++ = value;
 }
 
-PRIVATE int run(vm_t *vm)
+PRIVATE void error(vm_t *vm, const char *fmt, ...)
+{
+    size_t off = vm->pc - vm->chunk.codes - 1;
+    size_t line = vm->chunk.lines[off];
+    fprintf(stderr, "<RT> [line %04ld] ERROR: ", line);
+
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fprintf(stderr, "\n");
+
+    RESET_STACK(vm);
+}
+
+PRIVATE bool run(vm_t *vm)
 {
     vm->pc = vm->chunk.codes;
 
@@ -81,8 +99,8 @@ PRIVATE int run(vm_t *vm)
         case OP_RETURN: break;
         case OP_NEG: {
             if (!IS_NUMBER(peek(vm, 0))) {
-                errinfo("operand type must be 'number'");
-                return 1;
+                error(vm, "operand must be number");
+                return false;
             }
             double a = UNPACK_NUMBER(pop(vm));
             push(vm, PACK_NUMBER(-a));
@@ -104,7 +122,7 @@ PRIVATE int run(vm_t *vm)
         case OP_TRUE:  push(vm, PACK_BOOLEAN(true));  break;
         case OP_FALSE: push(vm, PACK_BOOLEAN(false)); break;
         case OP_NIL:   push(vm, PACK_NIL(0));         break;
-        default: return 1;
+        default: return false;
         }
 
 #ifdef DEBUG_TRACE_STACK
@@ -118,7 +136,7 @@ PRIVATE int run(vm_t *vm)
     printf("\n");
 #endif
 
-    return 0;
+    return true;
 }
 
 PRIVATE inst_t read_instruction(vm_t *vm)
@@ -193,8 +211,8 @@ PUBLIC void free_vm(vm_t *vm)
 PUBLIC status_t interpret(vm_t *vm, const char *source)
 {
     if (!source) return INTERPRET_OK;
-    if (compile(vm, source) != 0) return INTERPRET_COMPILE_ERROR;
-    if (run(vm) != 0) return INTERPRET_RUNTIME_ERROR;
+    if (!compile(vm, source)) return INTERPRET_COMPILE_ERROR;
+    if (!run(vm)) return INTERPRET_RUNTIME_ERROR;
     return INTERPRET_OK;
 }
 

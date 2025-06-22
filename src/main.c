@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 #include "common.h"
 #include "vm.h"
 #include "debug.h"
 #include "chunk.h"
+
+#define DISASM
 
 static char *read_file(const char *filename)
 {
@@ -30,21 +33,55 @@ static char *read_file(const char *filename)
     return source;
 }
 
-int main(int argc, char **argv)
+static bool run_script(const char *filename)
 {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <FILE>\n", argv[0]);
-        return 1;
-    }
-
     vm_t vm;
     init_vm(&vm);
 
-    char *source = read_file(argv[1]);
-    interpret(&vm, source);
+    char *source = read_file(filename);
+    status_t ret = interpret(&vm, source);
 
-    disasm_vm(&vm, "test");
+#ifdef DISASM
+    disasm_vm(&vm, "RUN SCRIPT");
+#endif
 
     free_vm(&vm);
-    return 0;
+
+    return ret == INTERPRET_OK;
+}
+
+static bool repl(void)
+{
+    vm_t vm;
+    init_vm(&vm);
+
+    while (1) {
+        printf("velo> ");
+        fflush(stdout);
+
+        char buf[1024] = {0};
+        if (!fgets(buf, sizeof(buf), stdin)) goto err;
+        if (strcmp(buf, "exit\n") == 0) goto ok;
+
+        interpret(&vm, buf);
+
+        free_vm(&vm);
+    }
+
+ok:
+    free_vm(&vm);
+    return true;
+
+err:
+    free_vm(&vm);
+    return false;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc == 1) {
+        return repl() ? 0 : 1;
+    } else {
+        return run_script(argv[1]) ? 0 : 1;
+    }
 }

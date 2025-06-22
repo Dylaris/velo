@@ -18,7 +18,7 @@ typedef enum {
     /* Experssion atom */
     TOKEN_NUMBER, TOKEN_STRING, TOKEN_IDENTIFIER,
 
-    /* Reserved words */
+    /* Keyword */
     TOKEN_VAR, TOKEN_RETURN, TOKEN_PRINT, TOKEN_TRUE, TOKEN_FALSE,
     TOKEN_NIL,
 

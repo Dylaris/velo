@@ -54,7 +54,7 @@ PRIVATE size_t op_func1(const char *name, chunk_t *chunk, size_t offset)
 
 PUBLIC void disasm_vm(vm_t *vm, const char *name)
 {
-    printf("=== %s ===\n", name ? name : "(null)");
+    printf("============ %s ============\n", name ? name : "(null)");
 
     chunk_t *chunk = &vm->chunk;
     dump_chunk(chunk);

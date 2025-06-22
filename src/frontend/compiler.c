@@ -8,6 +8,8 @@ typedef struct {
     token_t previous;
     token_t current;
     lexer_t lexer;
+    bool had_error;
+    bool panic_mode;
 } parser_t;
 
 typedef enum {
@@ -34,8 +36,10 @@ typedef struct {
 
 PRIVATE void init_parser(parser_t *parser, const char *source);
 PRIVATE void advance(parser_t *parser);
-PRIVATE int consume(parser_t *parser, toktype_t type, const char *msg);
+PRIVATE void consume(parser_t *parser, toktype_t type, const char *msg);
 PRIVATE rule_t *get_rule(toktype_t type);
+PRIVATE void error_at_current(parser_t *parser, const char *msg);
+PRIVATE void error(parser_t *parser, token_t *token, const char *msg);
 
 PRIVATE void parse_precedence(vm_t *vm, parser_t *parser, prec_t prec);
 PRIVATE void expr(vm_t *vm, parser_t *parser);
@@ -87,19 +91,44 @@ PRIVATE rule_t rules[] = {
  *             private function implementation            *
  * ====================================================== */
 
-PRIVATE int consume(parser_t *parser, toktype_t type, const char *msg)
+PRIVATE void error_at_current(parser_t *parser, const char *msg)
+{
+    error(parser, &parser->current, msg);
+}
+
+PRIVATE void error(parser_t *parser, token_t *token, const char *msg)
+{
+    /* Compile time error */
+
+    if (parser->panic_mode) return;
+
+    parser->panic_mode = true;
+
+    fprintf(stderr, "<CT> [line: %04ld] ERROR: %s ", token->line, msg);
+    if (token->type == TOKEN_EOF) {
+        fprintf(stderr, "at end\n");
+    } else if (token->type == TOKEN_ERROR) {
+        /* Nothing */
+    } else {
+        fprintf(stderr, "at '%*.s'\n", (int) token->length, token->start);
+    }
+
+    parser->had_error = true;
+}
+
+PRIVATE void consume(parser_t *parser, toktype_t type, const char *msg)
 {
     if (parser->current.type != type) {
-        fprintf(stderr, "ERROR: %s\n", msg);
-        return 1;
+        error_at_current(parser, msg);
     }
     advance(parser);
-    return 0;
 }
 
 PRIVATE void init_parser(parser_t *parser, const char *source)
 {
     memset(parser, 0, sizeof(parser_t));
+    parser->had_error = false;
+    parser->panic_mode = false;
     init_lexer(&parser->lexer, source);
     advance(parser); // force parser->current to point to first token
 }
@@ -119,14 +148,20 @@ PRIVATE void parse_precedence(vm_t *vm, parser_t *parser, prec_t prec)
 {
     advance(parser);
     parsefn_t prefix_fn = get_rule(parser->previous.type)->prefix;
-    if (!prefix_fn) fatal("get prefix rule");
+    if (!prefix_fn) {
+        error_at_current(parser, "get prefix rule");
+        return;
+    }
 
     prefix_fn(vm, parser);
 
     while (get_rule(parser->current.type)->prec > prec) {
         advance(parser);
         parsefn_t infix_fn = get_rule(parser->previous.type)->infix;
-        if (!prefix_fn) fatal("get prefix rule");
+        if (!infix_fn) {
+            error_at_current(parser, "get infix rule");
+            return;
+        }
         infix_fn(vm, parser);
     }
 }
@@ -243,13 +278,11 @@ PRIVATE void emit_load(vm_t *vm, value_t value, size_t line)
  *             public function implementation             *
  * ====================================================== */
 
-PUBLIC int compile(vm_t *vm, const char *source)
+PUBLIC bool compile(vm_t *vm, const char *source)
 {
 #if 1
     parser_t parser;
     init_parser(&parser, source);
-
-    int status = 0;
 
     expr(vm, &parser);
     consume(&parser, TOKEN_EOF, "expected end of expression");
@@ -259,18 +292,15 @@ PUBLIC int compile(vm_t *vm, const char *source)
     lexer_t lexer;
     init_lexer(&lexer, source);
 
-    int status = 0;
-
     while (1) {
         token_t token = scan_token(&lexer);
         printf("<line:%04ld> %-30s %.*s\n", token.line,
                 token_to_string(token), (int) token.length, token.start);
-        if (token.type == TOKEN_ERROR) status = 1;
         if (token.type == TOKEN_EOF) break;
     }
 
     printf("\n\n");
 #endif
 
-    return status;
+    return !parser.had_error;
 }

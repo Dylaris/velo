@@ -27,20 +27,30 @@ PRIVATE char peek(lexer_t *lexer);
 PRIVATE char peek_next(lexer_t *lexer);
 PRIVATE bool match(lexer_t *lexer, char expected);
 PRIVATE toktype_t get_identifier_type(lexer_t *lexer);
+PRIVATE toktype_t check_keyword(lexer_t *lexer, const char *keyword, toktype_t type);
 
 /* ====================================================== *
  *             private function implementation            *
  * ====================================================== */
 
+PRIVATE toktype_t check_keyword(lexer_t *lexer, const char *keyword, toktype_t type)
+{
+    size_t length = lexer->current - lexer->start;
+    if (strlen(keyword) != length || memcmp(lexer->start, keyword, length) != 0) {
+        return TOKEN_IDENTIFIER;
+    }
+    return type;
+}
+
 PRIVATE toktype_t get_identifier_type(lexer_t *lexer)
 {
     switch (lexer->start[0]) {
-    case 'f': return TOKEN_FALSE;
-    case 'n': return TOKEN_NIL;
-    case 'p': return TOKEN_PRINT;
-    case 't': return TOKEN_TRUE;
-    case 'r': return TOKEN_RETURN;
-    case 'v': return TOKEN_VAR;
+    case 'f': return check_keyword(lexer, "false", TOKEN_FALSE);
+    case 'n': return check_keyword(lexer, "nil", TOKEN_NIL);
+    case 'p': return check_keyword(lexer, "print", TOKEN_PRINT);
+    case 't': return check_keyword(lexer, "true", TOKEN_TRUE);
+    case 'r': return check_keyword(lexer, "return", TOKEN_RETURN);
+    case 'v': return check_keyword(lexer, "var", TOKEN_VAR);
     default:  return TOKEN_IDENTIFIER;
     }
 }

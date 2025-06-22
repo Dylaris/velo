@@ -4,6 +4,6 @@
 #include "common.h"
 #include "vm.h"
 
-PUBLIC int compile(vm_t *vm, const char *source);
+PUBLIC bool compile(vm_t *vm, const char *source);
 
 #endif // VELO_COMPILER_H
