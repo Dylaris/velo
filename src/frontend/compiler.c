@@ -3,6 +3,7 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "lexer.h"
+#include "object.h"
 
 typedef struct {
     token_t previous;
@@ -44,6 +45,7 @@ PRIVATE void error(parser_t *parser, token_t *token, const char *msg);
 PRIVATE void parse_precedence(vm_t *vm, parser_t *parser, prec_t prec);
 PRIVATE void expr(vm_t *vm, parser_t *parser);
 PRIVATE void expr_number(vm_t *vm, parser_t *parser);
+PRIVATE void expr_string(vm_t *vm, parser_t *parser);
 PRIVATE void expr_literal(vm_t *vm, parser_t *parser);
 PRIVATE void expr_unary(vm_t *vm, parser_t *parser);
 PRIVATE void expr_binary(vm_t *vm, parser_t *parser);
@@ -51,7 +53,6 @@ PRIVATE void expr_grouping(vm_t *vm, parser_t *parser);
 
 PRIVATE void emit_byte(vm_t *vm, uint8_t byte, size_t line);
 PRIVATE void emit_bytes(vm_t *vm, uint8_t byte1, uint8_t byte2, size_t line);
-PRIVATE void emit_return(vm_t *vm, size_t line);
 PRIVATE void emit_load(vm_t *vm, value_t value, size_t line);
 
 PRIVATE rule_t rules[] = {
@@ -75,7 +76,7 @@ PRIVATE rule_t rules[] = {
     [TOKEN_COMMA]           = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT]             = {NULL, NULL, PREC_NONE},
     [TOKEN_NUMBER]          = {expr_number, NULL, PREC_NONE},
-    [TOKEN_STRING]          = {NULL, NULL, PREC_NONE},
+    [TOKEN_STRING]          = {expr_string, NULL, PREC_NONE},
     [TOKEN_IDENTIFIER]      = {NULL, NULL, PREC_NONE},
     [TOKEN_VAR]             = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN]          = {NULL, NULL, PREC_NONE},
@@ -188,6 +189,13 @@ PRIVATE void expr_number(vm_t *vm, parser_t *parser)
     emit_load(vm, value, parser->previous.line);
 }
 
+PRIVATE void expr_string(vm_t *vm, parser_t *parser)
+{
+    /* Skip left '"' and right '"' */
+    emit_load(vm, PACK_OBJECT(copy_string(vm, parser->previous.start + 1,
+                    parser->previous.length - 2)), parser->previous.line);
+}
+
 PRIVATE void expr_unary(vm_t *vm, parser_t *parser)
 {
     toktype_t optype = parser->previous.type;
@@ -261,11 +269,6 @@ PRIVATE void emit_bytes(vm_t *vm, uint8_t byte1, uint8_t byte2, size_t line)
 {
     emit_byte(vm, byte1, line);
     emit_byte(vm, byte2, line);
-}
-
-PRIVATE void emit_return(vm_t *vm, size_t line)
-{
-    emit_byte(vm, OP_RETURN, line);
 }
 
 PRIVATE void emit_load(vm_t *vm, value_t value, size_t line)

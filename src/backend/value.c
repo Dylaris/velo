@@ -1,4 +1,7 @@
+#include <string.h>
+
 #include "value.h"
+#include "object.h"
 
 /* ====================================================== *
  *          public function implementation                *
@@ -41,6 +44,9 @@ PUBLIC void print_value(value_t value)
     case VT_NUMBER:
         printf("%g", UNPACK_NUMBER(value));
         break;
+    case VT_OBJECT:
+        print_object(value);
+        break;
     default:
         unreachable("unknown value type");
     }
@@ -53,6 +59,12 @@ PUBLIC bool values_equal(value_t a, value_t b)
     case VT_BOOLEAN: return UNPACK_BOOLEAN(a) == UNPACK_BOOLEAN(b);
     case VT_NUMBER:  return UNPACK_NUMBER(a) == UNPACK_NUMBER(b);
     case VT_NIL:     return true;
+    case VT_OBJECT: {
+        string_t *sa = UNPACK_STRING(a);
+        string_t *sb = UNPACK_STRING(b);
+        return sa->len == sb->len &&
+               memcmp(sa->chars, sb->chars, sa->len) == 0;
+    }
     default: unreachable("unknown type");
     }
 }

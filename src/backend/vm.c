@@ -1,5 +1,7 @@
 #include <stdarg.h>
+#include <string.h>
 
+#include "object.h"
 #include "vm.h"
 #include "compiler.h"
 #ifdef DEBUG_TRACE_STACK
@@ -13,7 +15,7 @@
     do {                                                            \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {   \
             error(vm, "operands must be numbers");                  \
-            return 1;                                               \
+            return false;                                           \
         }                                                           \
         double b = UNPACK_NUMBER(pop(vm));                          \
         double a = UNPACK_NUMBER(pop(vm));                          \
@@ -28,6 +30,8 @@ PRIVATE inst_t read_instruction(vm_t *vm);
 PRIVATE char *opcode_to_string(opcode_t opcode);
 PRIVATE bool run(vm_t *vm);
 PRIVATE void error(vm_t *vm, const char *fmt, ...);
+PRIVATE void concat(vm_t *vm);
+PRIVATE void free_objects(object_t *objs);
 /* The push/pop/peek operations are frequently used, 
    and using them as macros can result in multiple 
    evaluations during macro expansion. */
@@ -39,6 +43,33 @@ PRIVATE bool is_falsey(value_t value);
 /* ====================================================== *
  *           private function implementation              *
  * ====================================================== */
+
+PRIVATE void free_objects(object_t *objs)
+{
+    object_t *cur = objs;
+    while (cur) {
+        object_t *next = cur->next;
+        free_object(cur);
+        cur = next;
+    }
+}
+
+PRIVATE void concat(vm_t *vm)
+{
+    string_t *b = UNPACK_STRING(pop(vm));
+    string_t *a = UNPACK_STRING(pop(vm));
+
+    /* We can't just modified a or b because of 
+       'string internaling' */
+    size_t len = a->len + b->len;
+    char *chars = malloc(len + 1);
+    memcpy(chars, a->chars, a->len);
+    memcpy(chars + a->len, b->chars, b->len);
+    chars[len] = '\0';
+
+    string_t *res = take_string(vm, chars, len);
+    push(vm, PACK_OBJECT(res));
+}
 
 PRIVATE bool is_falsey(value_t value)
 {
@@ -106,7 +137,19 @@ PRIVATE bool run(vm_t *vm)
             push(vm, PACK_NUMBER(-a));
             break;
         }
-        case OP_ADD: BINARY_OP(PACK_NUMBER, vm, +); break;
+        case OP_ADD: {
+            if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+                concat(vm);
+            } else if (IS_NUMBER(peek(vm, 0)) && IS_NUMBER(peek(vm, 1))) {
+                double b = UNPACK_NUMBER(pop(vm));
+                double a = UNPACK_NUMBER(pop(vm));
+                push(vm, PACK_NUMBER(a + b));
+            } else {
+                error(vm, "operands must be two numbers or two strings");
+                return false;
+            }
+            break;
+        }
         case OP_SUB: BINARY_OP(PACK_NUMBER, vm, -); break; 
         case OP_MUL: BINARY_OP(PACK_NUMBER, vm, *); break; 
         case OP_DIV: BINARY_OP(PACK_NUMBER, vm, /); break; 
@@ -200,11 +243,13 @@ PUBLIC void init_vm(vm_t *vm)
 {
     init_chunk(&vm->chunk);
     RESET_STACK(vm);
+    vm->objects = NULL;
 }
 
 PUBLIC void free_vm(vm_t *vm)
 {
     free_chunk(&vm->chunk);
+    free_objects(vm->objects);
     init_vm(vm);
 }
 

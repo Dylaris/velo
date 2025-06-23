@@ -12,6 +12,7 @@ typedef struct {
     uint8_t *pc;
     value_t ss[STACK_SIZE]; 
     value_t *sp;
+    object_t *objects;
 } vm_t;
 
 typedef enum {
