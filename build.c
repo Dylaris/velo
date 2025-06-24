@@ -1,7 +1,7 @@
 #define ZST_IMPLEMENTATION
 #include "zst.h"
 
-#define CC          "gcc"
+#define CC          "clang"
 #define TARGET      "velo"
 #define SRC_DIR     "src/"
 #define FRONT_END   (SRC_DIR "frontend/")
@@ -42,6 +42,7 @@ static void clean(void)
 {
 #ifdef _WIN32
     zst_dyna_t files = zst_fs_match_recursively("src/", "*.obj");
+
 #else
     zst_dyna_t files = zst_fs_match_recursively("src/", "*.o");
 #endif

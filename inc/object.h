@@ -18,6 +18,7 @@ struct string {
     struct object obj;
     size_t len;
     char *chars;
+    uint32_t hash;
 };
 
 #define OBJ_TYPE(v)         (UNPACK_OBJECT(v)->type)

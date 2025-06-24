@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "chunk.h"
-#include "value.h"
+#include "table.h"
 
 #define STACK_SIZE 256
 
@@ -13,6 +13,7 @@ typedef struct {
     value_t ss[STACK_SIZE]; 
     value_t *sp;
     object_t *objects;
+    table_t strings;
 } vm_t;
 
 typedef enum {

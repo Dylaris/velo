@@ -244,12 +244,14 @@ PUBLIC void init_vm(vm_t *vm)
     init_chunk(&vm->chunk);
     RESET_STACK(vm);
     vm->objects = NULL;
+    init_table(&vm->strings);
 }
 
 PUBLIC void free_vm(vm_t *vm)
 {
     free_chunk(&vm->chunk);
     free_objects(vm->objects);
+    free_table(&vm->strings);
     init_vm(vm);
 }
 
